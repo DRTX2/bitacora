@@ -1,0 +1,27 @@
+{
+  "name": "bitacora",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Incident ledger for Atalaya: turns Hookrelay webhooks into incident timelines, response metrics and postmortems. Serverless on AWS (Lambda + DynamoDB).",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "dev": "node --experimental-strip-types src/local/server.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}

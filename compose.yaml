@@ -1,0 +1,23 @@
+# Local runtime: DynamoDB Local + the Lambda handlers behind src/local/server.ts.
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:2.6.1
+    command: -jar DynamoDBLocal.jar -sharedDb -inMemory
+    ports: ["8002:8000"]
+    healthcheck: { test: ["CMD-SHELL", "curl -s -o /dev/null http://127.0.0.1:8000 || exit 1"], interval: 2s, retries: 30 }
+  bitacora:
+    build: .
+    ports: ["8090:8090"]
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      TABLE_NAME: bitacora
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      BITACORA_TOKEN: ${BITACORA_TOKEN:-change-me}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8090}
+    depends_on: { dynamodb: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/health"]
+      interval: 2s
+      retries: 30

@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public Standard Webhooks spec test vector and documentation placeholders (not credentials)"
+regexes = ['''whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw''', '''msg_p5jXN8AQM9LWM0D4loKWxJek''', '''change-me''']
