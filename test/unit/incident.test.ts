@@ -29,6 +29,11 @@ describe('metrics and postmortem', () => {
     expect(metrics({ incidentId: 'x', openedAt: incident.openedAt })).toMatchObject({ status: 'open', timeToMitigateMs: undefined });
   });
 
+  it('says a human had to act when automation could not mitigate', () => {
+    const escalated = { incidentId: 'inc-2', openedAt: incident.openedAt, escalatedAt: '2026-11-17T05:34:03.000Z', flags: [] };
+    expect(renderPostmortem(escalated, [])).toContain('Automatic mitigation failed and the incident was escalated to on-call 1 min 30 s after it opened');
+  });
+
   it('formats durations for people', () => {
     expect([formatDuration(615), formatDuration(1200), formatDuration(600_000), formatDuration(undefined)]).toEqual(['615 ms', '1.2 s', '10 min 0 s', '—']);
   });

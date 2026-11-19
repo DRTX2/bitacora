@@ -25,6 +25,11 @@ describe('parseEvent', () => {
     expect(e).toMatchObject({ kind: 'flag', flagKey: 'orders-v2', env: 'production', at: '2026-11-17T05:32:33.600Z' });
   });
 
+  it('reads an escalation with the reason automation gave up', () => {
+    const e = parseEvent(envelope('incident.escalated', { event: 'escalated', incidentId: 'inc-1', reason: 'POST flagship: 503', occurredAt: '2026-11-17T05:34:00.000Z' }));
+    expect(e).toMatchObject({ kind: 'incident', event: 'escalated', incidentId: 'inc-1', reason: 'POST flagship: 503', at: '2026-11-17T05:34:00.000Z' });
+  });
+
   it('acknowledges event types it does not use', () => {
     expect(parseEvent(envelope('order.created', { id: 1 }))).toEqual({ kind: 'ignored', type: 'order.created' });
   });

@@ -117,3 +117,39 @@ describe('a person steps in during an incident', () => {
     expect(md).toContain('The flag is still off after recovery');
   });
 });
+
+describe('deliveries replayed from a DLQ arrive in any order (found by the bitacora-down game day)', () => {
+  it('links a restore and a manual change that arrive before the kill they follow', async () => {
+    const id = 'cc33dd44-0000-4000-8000-000000000003';
+    const kill = deliver('flag.updated', '2026-11-17T07:00:01.000Z', { flagKey: 'ship-v2', env: 'production', action: `killed by nimbus incident ${id}: x`, actor: 'nimbus (automation)' });
+    const manual = deliver('flag.updated', '2026-11-17T07:02:00.000Z', { flagKey: 'ship-v2', env: 'production', action: 'updated targeting', actor: 'ana@acme.com' });
+    const restore = deliver('flag.updated', '2026-11-17T07:05:01.000Z', { flagKey: 'ship-v2', env: 'production', action: 'rolled back to #9', actor: 'nimbus (automation)' });
+    // Worst case: everything that follows the kill arrives first.
+    for (const d of [restore, manual]) expect(JSON.parse((await d.send()).body!)).toEqual({ incidentId: null });
+    await deliver('incident.recovered', '2026-11-17T07:05:00.000Z', { event: 'recovered', incidentId: id }).send();
+    expect((await kill.send()).statusCode).toBe(200);
+    await deliver('incident.opened', '2026-11-17T07:00:00.000Z', { event: 'opened', incidentId: id, pipelineName: 'Shipping' }).send();
+    await restore.send(); // a redelivery after linking changes nothing
+
+    const { timeline, metrics } = JSON.parse((await get(`/incidents/${id}`, id)).body!);
+    expect(timeline.map((t: { type: string }) => t.type)).toEqual(['incident.opened', 'flag.killed', 'flag.manual', 'incident.recovered', 'flag.restored']);
+    expect(metrics).toMatchObject({ status: 'recovered', timeToMitigateMs: 1000, timeToRestoreMs: 1000 });
+  });
+
+  it('keeps follow-ups with their own kill when a flag is killed by two incidents', async () => {
+    const [a, b] = ['dd44ee55-0000-4000-8000-00000000000a', 'dd44ee55-0000-4000-8000-00000000000b'];
+    const ev = (at: string, action: string) => deliver('flag.updated', at, { flagKey: 'pay-v4', env: 'production', action, actor: 'nimbus (automation)' });
+    const sends = [
+      ev('2026-11-17T08:30:01.000Z', 'rolled back to #2'), ev('2026-11-17T08:00:01.000Z', 'rolled back to #1'),
+      ev('2026-11-17T08:20:00.000Z', `killed by nimbus incident ${b}: y`), ev('2026-11-17T08:00:00.000Z', `killed by nimbus incident ${a}: x`),
+    ];
+    for (const d of sends) await d.send();
+    for (const [id, at] of [[a, '2026-11-17T07:59:59.000Z'], [b, '2026-11-17T08:19:59.000Z']] as const) {
+      await deliver('incident.opened', at, { event: 'opened', incidentId: id }).send();
+    }
+    const restoredAt = async (id: string) => JSON.parse((await get(`/incidents/${id}`, id)).body!).incident.restoredAt;
+    expect(await restoredAt(a)).toBe('2026-11-17T08:00:01.000Z');
+    expect(await restoredAt(b)).toBe('2026-11-17T08:30:01.000Z');
+  });
+});
+

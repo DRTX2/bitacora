@@ -7,12 +7,13 @@ const Envelope = z.object({ type: z.string().min(1).max(100), timestamp: z.iso.d
 
 const Incident = z.looseObject({
   incidentId: z.string().min(1).max(100),
-  event: z.enum(['opened', 'recovered']),
+  event: z.enum(['opened', 'recovered', 'escalated']),
   summary: z.string().max(500).optional(),
   detector: z.string().max(100).optional(),
   severity: z.string().max(50).optional(),
   pipelineName: z.string().max(200).optional(),
   occurredAt: z.iso.datetime({ offset: true }).optional(),
+  reason: z.string().max(500).optional(),
 });
 
 const Flag = z.looseObject({
@@ -26,13 +27,14 @@ const Flag = z.looseObject({
 
 export type IncidentEvent = {
   kind: 'incident';
-  event: 'opened' | 'recovered';
+  event: 'opened' | 'recovered' | 'escalated';
   incidentId: string;
   at: string;
   summary?: string;
   detector?: string;
   severity?: string;
   pipelineName?: string;
+  reason?: string;
 };
 export type FlagEvent = { kind: 'flag'; type: string; flagKey: string; env: string; version?: number; action: string; actor: string; at: string };
 export type DomainEvent = IncidentEvent | FlagEvent | { kind: 'ignored'; type: string };
@@ -55,13 +57,13 @@ export function parseEvent(rawBody: string): DomainEvent {
   if (!envelope.success) throw new InvalidEvent('not a Hookrelay envelope');
   const { type, timestamp, data } = envelope.data;
 
-  if (type === 'incident.opened' || type === 'incident.recovered') {
+  if (type === 'incident.opened' || type === 'incident.recovered' || type === 'incident.escalated') {
     const parsed = Incident.safeParse(data);
     if (!parsed.success) throw new InvalidEvent(`invalid ${type} payload`);
     const d = parsed.data;
     // occurredAt (set by Nimbus) is when the transition happened; the envelope timestamp is when the
     // workflow step delivered it, which can be later than the flag kill that step sequence triggered.
-    return { kind: 'incident', event: d.event, incidentId: d.incidentId, at: normalize(d.occurredAt ?? timestamp), summary: d.summary, detector: d.detector, severity: d.severity, pipelineName: d.pipelineName };
+    return { kind: 'incident', event: d.event, incidentId: d.incidentId, at: normalize(d.occurredAt ?? timestamp), summary: d.summary, detector: d.detector, severity: d.severity, pipelineName: d.pipelineName, reason: d.reason };
   }
   if (type.startsWith('flag.')) {
     const parsed = Flag.safeParse(data);

@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Incident ledger for Atalaya: turns Hookrelay webhooks into incident timelines, response metrics and postmortems. Serverless on AWS (Lambda + DynamoDB).",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
@@ -15,6 +17,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.700.0",
     "@aws-sdk/lib-dynamodb": "^3.700.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.83.1",
     "zod": "^4.1.0"
   },
   "devDependencies": {

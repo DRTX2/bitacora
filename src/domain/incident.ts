@@ -24,6 +24,7 @@ export type Incident = {
   pipelineName?: string;
   openedAt?: string;
   mitigatedAt?: string;
+  escalatedAt?: string;
   recoveredAt?: string;
   restoredAt?: string;
   flags?: string[];
@@ -91,6 +92,7 @@ export function renderPostmortem(i: Incident, timeline: TimelineEntry[]): string
     '',
   ];
   if (i.mitigatedAt) lines.push(`- Automation turned off ${(i.flags ?? []).join(', ') || 'the flag'} ${formatDuration(m.timeToMitigateMs)} after the incident opened.`);
+  else if (i.escalatedAt) lines.push(`- Automatic mitigation failed and the incident was escalated to on-call ${formatDuration(diff(i.openedAt, i.escalatedAt))} after it opened: a human had to act.`);
   else lines.push('- No automatic mitigation was recorded. Check the response workflow.');
   for (const t of manual) lines.push(`- ${t.actor} changed the flag during the incident (${utc(t.at)}), so automation did not restore it.`);
   if (i.recoveredAt && i.mitigatedAt && !i.restoredAt) lines.push('- The flag is still off after recovery: confirm it is safe before turning it back on.');

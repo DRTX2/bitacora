@@ -1,6 +1,6 @@
 # ADR-0002: Idempotent, order-independent ingestion
 
-**Status:** accepted · 2026-11-17
+**Status:** accepted · 2026-11-17 · amended 2026-11-18 (decision 6, found by the `bitacora-down` game day)
 
 ## Context
 Two publishers feed one incident: Nimbus (`incident.*`, through Hookrelay's inbound endpoint) and Flagship (`flag.*`). Hookrelay delivers at least once and retries each endpoint independently, so:
@@ -14,7 +14,9 @@ Two publishers feed one incident: Nimbus (`incident.*`, through Hookrelay's inbo
 3. **Event time comes from the source.** Incidents use Nimbus' `occurredAt` (added to Nimbus for this; it's additive and optional for other consumers). Flag events use Flagship's `at`. The envelope timestamp is only a fallback.
 4. **Timestamps are normalized** to fixed-width ISO-8601 (`toISOString()`), because they are sort keys compared as text: Go writes `…30.1Z`, JavaScript `…30.100Z`, and the first would sort after `…30.123Z`.
 5. **Correlation needs both the audit text and the automation actor**, so a person can't link a change to an incident by typing the text.
+6. **Follow-ups are linked through a per-flag history.** Every flag change is stored under `FLAG#<key>#<env>` ordered by time. A kill adopts the restores and manual changes that arrived before it (up to the next kill); a follow-up links to the latest kill before it once that kill exists. The first version kept only a "last kill" pointer, so a restore that arrived before its kill was dropped.
 
 ## Consequences
 - The integration test delivers events out of order and twice and asserts the same timeline.
 - The end-to-end Atalaya demo caught decision 3: using delivery time made "opened" land after "mitigated" (a negative time to mitigate).
+- The `bitacora-down` game day caught decision 6: after a DLQ replay delivered events in a different order, the timeline lost `flag.restored`. Integration tests now cover restore- and manual-before-kill and two incidents on the same flag.
